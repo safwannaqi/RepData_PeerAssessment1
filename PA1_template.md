@@ -36,7 +36,7 @@ actmondata$date <- ymd(actmondata$date)
 ```
 
 
-###Analysis of data across days
+###What is mean total number of steps taken per day?
 
 We'll first calculate the total number of steps taken per day and print them.
 
@@ -102,7 +102,7 @@ print(mediansteps_per_day)
 ```
 
 
-###Average daily activity patterns
+###What is the average daily activity pattern?
 
 Now we'll create a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
 
@@ -246,6 +246,7 @@ print(tot_missing_values)
 ## [1] 2304
 ```
 
+####Strategy for imputing missing data:  
 Imputing all of the missing values in the dataset: I believe that the movement activity, especially walking, of any individual is highly dependant of the time of the day.  We usually don't walk at night as most of us are asleep, and we immediately start walking around after waking up in the morning to go to work, school etc.
 Hence I have decided to impute my data for each interval with the mean value of that interval across all other dates.
 
@@ -292,7 +293,7 @@ print(imp_mediansteps_per_day)
 The values of mean and median computed here do differ from the ones computed for the data with missing values. Both mean and median are higher for the imputed data. More interestingly, both mean and median are now equal.
 
 
-###Activity patterns between weekdays and weekends
+###Are there differences in activity patterns between weekdays and weekends?
 
 Creating a  factor variable to identify weekday/weekends using the `dplyr` package
 
