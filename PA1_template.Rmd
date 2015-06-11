@@ -1,25 +1,146 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Personal Activity Monitoring Assignment"
+author: "Muhammad Safwan Naqi"
+date: "Thursday, June 11, 2015"
+output: html_document
 ---
 
 
-## Loading and preprocessing the data
+
+###Loading and preprocessing the data
+First we'll download the zip file and unzip it in our working directory.
+
+```{r warning=FALSE}
+zipfile <- tempfile()
+fileurl = "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(fileurl, zipfile,  mode="wb", method = "curl")
+unzip(zipfile, "activity.csv")
+unlink(zipfile)
+```
+
+Next we'll load the data in a data frame.
+
+```{r}
+actmondata <- read.csv("activity.csv")
+```
+
+Doing minor date tranformations using `lubridate` package
+
+```{r}
+actmondata$date <- as.character(actmondata$date)
+library(lubridate)
+actmondata$date <- ymd(actmondata$date)
+```
 
 
+###Analysis of data across days
 
-## What is mean total number of steps taken per day?
+We'll first calculate the total number of steps taken per day and print them.
+
+```{r}
+steps_per_day <- tapply(actmondata$steps, actmondata$date, function(x) sum(x, na.rm = TRUE))
+print(steps_per_day)
+```
+
+Next, we'll make a histogram of the total number of steps taken each day
+
+```{r}
+hist(steps_per_day, main = "Total number of steps taken in a day", xlab = "No. of steps")
+```
+
+Final step for this section: we'll calculate and show mean and median of the total number of steps taken per day
+
+```{r}
+avesteps_per_day <- mean(steps_per_day)
+print(avesteps_per_day)
+mediansteps_per_day <- median(steps_per_day)
+print(mediansteps_per_day)
+```
 
 
+###Average daily activity patterns
 
-## What is the average daily activity pattern?
+Now we'll create a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r}
+avesteps_per_int <- tapply(actmondata$steps, actmondata$interval, 
+                           function(x) mean(x, na.rm = TRUE))
+print(avesteps_per_int)
+plot(names(avesteps_per_int), avesteps_per_int, type = "l", xlab = "5 minute Interval", 
+     ylab = "Average No. of steps", main = "Time series plot")
+```
+
+Let's find the 5-minute interval with the maximum number of steps
+
+```{r}
+maxint <- names(avesteps_per_int)[which.max(avesteps_per_int)]
+print(maxint)
+```
 
 
+###Imputing missing values
 
-## Imputing missing values
+Calculating and showing the total number of missing values in the dataset
+
+```{r}
+tot_missing_values <- sum(!complete.cases(actmondata))
+print(tot_missing_values)
+```
+
+Imputing all of the missing values in the dataset: I believe that the movement activity, especially walking, of any individual is highly dependant of the time of the day.  We usually don't walk at night as most of us are asleep, and we immediately start walking around after waking up in the morning to go to work, school etc.
+Hence I have decided to impute my data for each interval with the mean value of that interval across all other dates.
+
+```{r}
+imputed_data <- actmondata
+missing_values <- is.na(imputed_data$steps)
+imputed_data[missing_values, "steps"] <- 
+    avesteps_per_int[as.character(imputed_data[missing_values, "interval"])]
+```
+
+Making a histogram of the total number of steps taken each day using the imputed data
+
+```{r}
+imp_steps_per_day <- tapply(imputed_data$steps, imputed_data$date, sum)
+hist(imp_steps_per_day, main = "Total number of steps taken in a day (imputed data)",
+     xlab = "No. of steps")
+```
+
+Calculating and printing the mean and median of the total number of steps taken per day using the imputed data
+
+```{r}
+imp_avesteps_per_day <- mean(imp_steps_per_day)
+print(imp_avesteps_per_day)
+imp_mediansteps_per_day <- median(imp_steps_per_day)
+print(imp_mediansteps_per_day)
+```
+
+The values of mean and median computed here do differ from the ones computed for the data with missing values. Both mean and median are higher for the imputed data. More interestingly, both mean and median are now equal.
 
 
+###Activity patterns between weekdays and weekends
 
-## Are there differences in activity patterns between weekdays and weekends?
+Creating a  factor variable to identify weekday/weekends using the `dplyr` package
+
+```{r}
+library(dplyr)
+weekends <- c("Sunday", "Saturday")
+imputed_data <- mutate(imputed_data, 
+                       day_type = ifelse(weekdays(imputed_data$date) %in% weekends, "weekend", "weekday"))
+imputed_data$day_type <- as.factor(imputed_data$day_type)
+```
+
+Making a panel plot containing a time series plot (`type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). I'll make use of the `lattice` ploting system, and I'll convert the data frame into a data table, so that I can use `plyr` like operations.
+
+```{r}
+library(lattice)
+library(data.table)
+par(mfrow=c(2,1))
+imputed_data_t <- data.table(imputed_data)
+imputed_data_t[, day_type_mean:=mean(steps), by=list(day_type, interval)]
+imputed_data_t <- group_by(imputed_data_t, interval,day_type,day_type_mean)
+imputed_data_t <- summarise(imputed_data_t, step_sum = sum(steps))
+xyplot(day_type_mean ~ interval | day_type, data = imputed_data_t, type = "l", layout = c(1,2))
+```
+
+*End of assignment.*  
+Thank you for reading this document.
